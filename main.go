@@ -6,23 +6,35 @@ import (
 )
 
 func main() {
-	// 1. Create a new http.ServeMux
+	const filepathRoot = "."
+	const port = "8080"
+
+	// Initialize the configuration struct.
+	apiCfg := &apiConfig{}
+
+	// Create a new http.ServeMux
 	mux := http.NewServeMux()
 
-	// Register a handler function with the multiplexer
-	//	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-	//		fmt.Fprintf(w, "Hello, Go Web Server!\\n")
-	//	})
+	// Register the healthz handler for the /healthz path
+	mux.HandleFunc("/healthz", healthzHandler)
+	// Register the new /metrics and /reset handlers as methods on the apiConfig struct.
+	mux.HandleFunc("/metrics", apiCfg.handlerMetrics)
+	mux.HandleFunc("/reset", apiCfg.handlerReset)
 
-	// 2. Create a new http.Server struct
+	// Wrap the file server with http.StripPrefix
+	// http.StripPrefix removes the /app prefix from the request path before passing it to the file server
+	handler := http.StripPrefix("/app", http.FileServer(http.Dir(filepathRoot)))
+	mux.Handle("/app/", apiCfg.middlewareMetricsInc(handler))
+
+	// Create an http.Server struct and set its Addr and Handler
 	server := &http.Server{
-		Addr:    ":8080", // 3. Set the .Addr field to ":8080"
-		Handler: mux,     // 4. Use the new "ServeMux" as the server's handler
+		Addr:    ":" + port,
+		Handler: mux,
 	}
 
-	log.Printf("Server starting on %s\n", server.Addr)
+	log.Printf("Serving files from %s on port: %s\n", filepathRoot, port)
 
-	// 5. Use the server's ListenAndServe method to start the server
+	// Use the server's ListenAndServe method to start the server
 	if err := server.ListenAndServe(); err != nil {
 		// Log a fatal error if the server fails to start
 		log.Fatalf("Server error: %v", err)
