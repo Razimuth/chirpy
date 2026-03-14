@@ -16,10 +16,10 @@ func main() {
 	mux := http.NewServeMux()
 
 	// Register the healthz handler for the /healthz path
-	mux.HandleFunc("/healthz", healthzHandler)
+	mux.HandleFunc("GET /healthz", healthzHandler)
 	// Register the new /metrics and /reset handlers as methods on the apiConfig struct.
-	mux.HandleFunc("/metrics", apiCfg.handlerMetrics)
-	mux.HandleFunc("/reset", apiCfg.handlerReset)
+	mux.HandleFunc("GET /metrics", apiCfg.handlerMetrics)
+	mux.HandleFunc("POST /reset", apiCfg.handlerReset)
 
 	// Wrap the file server with http.StripPrefix
 	// http.StripPrefix removes the /app prefix from the request path before passing it to the file server
