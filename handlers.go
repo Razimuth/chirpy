@@ -24,12 +24,18 @@ func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
 
 // handlerMetrics writes the current number of requests as plain text to the HTTP response.
 func (cfg *apiConfig) handlerMetrics(w http.ResponseWriter, r *http.Request) {
-	// Use .Load() to safely read the current value of the atomic counter.
-	hits := cfg.fileserverHits.Load()
-	response := fmt.Sprintf("Hits: %d", hits)
-	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	w.Header().Set("Content-Type", "text/html")
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(response))
+	hits := cfg.fileserverHits.Load()
+	htmlResponce := fmt.Sprintf(`
+<html>
+<body>
+    <h1>Welcome, Chirpy Admin</h1>
+    <p>Chirpy has been visited %d times!</p>
+</body>
+</html>`, hits)
+
+	w.Write([]byte(htmlResponce))
 }
 
 // handlerReset resets the fileserverHits counter back to 0.
