@@ -1,16 +1,52 @@
 package main
 
 import (
+	"database/sql"
 	"log"
 	"net/http"
+	"os"
+	"sync/atomic"
+
+	"github.com/Razimuth/chirpy/internal/database"
+	"github.com/joho/godotenv"
+	_ "github.com/lib/pq"
 )
 
 func main() {
 	const filepathRoot = "."
 	const port = "8080"
 
+	// load environment variables from the .env file
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
+	//	godotenv.Load()
+	dbURL := os.Getenv("DB_URL")
+	if dbURL == "" {
+		log.Fatal("DB_URL must be set")
+	}
+	platform := os.Getenv("PLATFORM")
+	if platform == "" {
+		log.Fatal("PLATFORM must be set")
+	}
+
+	// Open a database connection using the URL from the environment variable
+	db, err := sql.Open("postgres", dbURL)
+	if err != nil {
+		log.Fatal("Error opening database connection:", err)
+	}
+	dbQueries := database.New(db)
+
+	defer db.Close()
+
 	// Initialize the configuration struct.
-	apiCfg := &apiConfig{}
+	//	apiCfg := &apiConfig{}
+	apiCfg := apiConfig{
+		fileserverHits: atomic.Int32{},
+		db:             dbQueries,
+		platform:       platform,
+	}
 
 	// Create a new http.ServeMux
 	mux := http.NewServeMux()
@@ -21,6 +57,7 @@ func main() {
 	mux.HandleFunc("GET /admin/metrics", apiCfg.handlerMetrics)
 	mux.HandleFunc("POST /admin/reset", apiCfg.handlerReset)
 	mux.HandleFunc("POST /api/validate_chirp", apiCfg.handlerValidateChirp)
+	mux.HandleFunc("POST /api/users", apiCfg.handlerCreateUser)
 
 	// Wrap the file server with http.StripPrefix
 	// http.StripPrefix removes the /app prefix from the request path before passing it to the file server

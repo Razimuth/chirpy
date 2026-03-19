@@ -5,11 +5,15 @@ import (
 	"fmt"
 	"net/http"
 	"sync/atomic"
+
+	"github.com/Razimuth/chirpy/internal/database"
 )
 
 // apiConfig holds all stateful, in-memory data.
 type apiConfig struct {
 	fileserverHits atomic.Int32
+	db             *database.Queries
+	platform       string
 }
 
 // middlewareMetricsInc is a middleware that increments the fileserverHits counter
@@ -40,11 +44,24 @@ func (cfg *apiConfig) handlerMetrics(w http.ResponseWriter, r *http.Request) {
 
 // handlerReset resets the fileserverHits counter back to 0.
 func (cfg *apiConfig) handlerReset(w http.ResponseWriter, r *http.Request) {
-	// Use .Store() to safely set the value back to 0.
+	if cfg.platform != "dev" {
+		respondWithError(w, http.StatusForbidden, "This endpoint is only available in the development environment")
+		return
+	}
 	cfg.fileserverHits.Store(0)
-	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("Hits reset to 0"))
+	//	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	//	w.WriteHeader(http.StatusOK)
+	//	w.Write([]byte("Hits reset to 0"))
+	//}
+
+	err := cfg.db.DeleteAllUsers(r.Context())
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, fmt.Sprintf("Could not delete all users: %v", err))
+		return
+	}
+
+	//	respondWithJSON(w, http.StatusOK, map[string]string{"status": "Hits reset to 0 and all users deleted"})
+	respondWithJSON(w, http.StatusOK, "Hits reset to 0 and all users deleted")
 }
 
 // healthzHandler handles requests to the /healthz endpoint
