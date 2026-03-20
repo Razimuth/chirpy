@@ -56,8 +56,9 @@ func main() {
 	// Register the new /metrics and /reset handlers as methods on the apiConfig struct.
 	mux.HandleFunc("GET /admin/metrics", apiCfg.handlerMetrics)
 	mux.HandleFunc("POST /admin/reset", apiCfg.handlerReset)
-	mux.HandleFunc("POST /api/validate_chirp", apiCfg.handlerValidateChirp)
+	//	mux.HandleFunc("POST /api/validate_chirp", apiCfg.handlerValidateChirp)
 	mux.HandleFunc("POST /api/users", apiCfg.handlerCreateUser)
+	mux.HandleFunc("POST /api/chirps", apiCfg.handlerCreateChirp)
 
 	// Wrap the file server with http.StripPrefix
 	// http.StripPrefix removes the /app prefix from the request path before passing it to the file server
