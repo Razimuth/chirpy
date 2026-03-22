@@ -7,58 +7,28 @@ package database
 
 import (
 	"context"
-	"time"
-
-	"github.com/google/uuid"
 )
 
-const createChirp = `-- name: CreateChirp :one
-INSERT INTO chirps (id, created_at, updated_at, body, user_id)
-VALUES ($1, $2, $3, $4, $5)
-RETURNING id, created_at, updated_at, body, user_id
-`
-
-type CreateChirpParams struct {
-	ID        uuid.UUID
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	Body      string
-	UserID    uuid.UUID
-}
-
-func (q *Queries) CreateChirp(ctx context.Context, arg CreateChirpParams) (Chirp, error) {
-	row := q.db.QueryRowContext(ctx, createChirp,
-		arg.ID,
-		arg.CreatedAt,
-		arg.UpdatedAt,
-		arg.Body,
-		arg.UserID,
-	)
-	var i Chirp
-	err := row.Scan(
-		&i.ID,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-		&i.Body,
-		&i.UserID,
-	)
-	return i, err
-}
-
 const createUser = `-- name: CreateUser :one
-INSERT INTO users (id, created_at, updated_at, email)
-VALUES (gen_random_uuid(), NOW(), NOW(), $1)
-RETURNING id, created_at, updated_at, email
+INSERT INTO users (id, created_at, updated_at, email, hashed_password)
+VALUES (gen_random_uuid(), NOW(), NOW(), $1, $2)
+RETURNING id, created_at, updated_at, email, hashed_password
 `
 
-func (q *Queries) CreateUser(ctx context.Context, email string) (User, error) {
-	row := q.db.QueryRowContext(ctx, createUser, email)
+type CreateUserParams struct {
+	Email          string
+	HashedPassword string
+}
+
+func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
+	row := q.db.QueryRowContext(ctx, createUser, arg.Email, arg.HashedPassword)
 	var i User
 	err := row.Scan(
 		&i.ID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Email,
+		&i.HashedPassword,
 	)
 	return i, err
 }
@@ -70,4 +40,22 @@ DELETE FROM users
 func (q *Queries) DeleteAllUsers(ctx context.Context) error {
 	_, err := q.db.ExecContext(ctx, deleteAllUsers)
 	return err
+}
+
+const getUserByEmail = `-- name: GetUserByEmail :one
+SELECT id, created_at, updated_at, email, hashed_password FROM users
+WHERE email = $1
+`
+
+func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error) {
+	row := q.db.QueryRowContext(ctx, getUserByEmail, email)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Email,
+		&i.HashedPassword,
+	)
+	return i, err
 }
