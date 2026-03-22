@@ -59,6 +59,8 @@ func main() {
 	//	mux.HandleFunc("POST /api/validate_chirp", apiCfg.handlerValidateChirp)
 	mux.HandleFunc("POST /api/users", apiCfg.handlerCreateUser)
 	mux.HandleFunc("POST /api/chirps", apiCfg.handlerCreateChirp)
+	mux.HandleFunc("GET /api/chirps", apiCfg.handlerGetChirps)
+	mux.HandleFunc("GET /api/chirps/{chirpID}", apiCfg.handlerGetChirp)
 
 	// Wrap the file server with http.StripPrefix
 	// http.StripPrefix removes the /app prefix from the request path before passing it to the file server
