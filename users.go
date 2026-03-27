@@ -12,11 +12,16 @@ import (
 )
 
 type UserResponse struct {
-	ID        uuid.UUID `json:"id"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-	Email     string    `json:"email"`
+	ID           uuid.UUID `json:"id"`
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
+	Email        string    `json:"email"`
+	Token        string    `json:"token"`
+	RefreshToken string    `json:"refresh_token"`
 }
+
+//const defaultExpiration = time.Hour
+//const maxExpiration = time.Hour
 
 func (cfg *apiConfig) handlerCreateUser(w http.ResponseWriter, r *http.Request) {
 
@@ -64,6 +69,7 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 	type parameters struct {
 		Email          string `json:"email"`
 		HashedPassword string `json:"password"`
+		//		ExpiresInSeconds *int64 `json:"expires_in_seconds,omitempty"` // Pointer to int64 to detect if present
 	}
 	decoder := json.NewDecoder(r.Body)
 	params := parameters{}
@@ -85,10 +91,61 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Calculate expiration time
+	//expiresIn := defaultExpiration
+	//	if params.ExpiresInSeconds != nil {
+	//		// Use provided value if present, capping at maxExpiration
+	//		duration := time.Duration(*params.ExpiresInSeconds) * time.Second
+	//		if duration < maxExpiration {
+	//			expiresIn = duration
+	//		} else {
+	//			expiresIn = maxExpiration
+	//		}
+	//	}
+
+	// Generate the JWT
+	//token, err := auth.MakeJWT(user.ID, cfg.jwtSecret, expiresIn)
+	//if err != nil {
+	//	respondWithError(w, http.StatusInternalServerError, "Couldn't create JWT")
+	//	return
+	//}
+
+	// Generate access token (JWT, 1 hour expiration)
+	accessToken, err := auth.MakeJWT(user.ID, cfg.jwtSecret, time.Hour)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Couldn't create JWT")
+		return
+	}
+
+	// Generate refresh token (random string)
+	refreshToken, err := auth.MakeRefreshToken()
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Couldn't create refreshToken")
+		return
+	}
+
+	expiresAt := time.Now().Add(60 * 24 * time.Hour)
+	// db.Exec(...) // Use your database driver to insert the token, user_id, expires_at, created_at, updated_at
+
+	// Store refresh token in database (using your DB client/models)
+	err = cfg.db.SaveRefreshToken(r.Context(), database.SaveRefreshTokenParams{
+		Token:     refreshToken,
+		UserID:    user.ID,
+		ExpiresAt: expiresAt,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	})
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Couldn't save refresh token")
+		return
+	}
+
 	respondWithJSON(w, http.StatusOK, UserResponse{
-		ID:        user.ID,
-		CreatedAt: user.CreatedAt,
-		UpdatedAt: user.UpdatedAt,
-		Email:     user.Email,
+		ID:           user.ID,
+		CreatedAt:    user.CreatedAt,
+		UpdatedAt:    user.UpdatedAt,
+		Email:        user.Email,
+		Token:        accessToken,
+		RefreshToken: refreshToken,
 	})
 }

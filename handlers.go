@@ -14,6 +14,7 @@ type apiConfig struct {
 	fileserverHits atomic.Int32
 	db             *database.Queries
 	platform       string
+	jwtSecret      string
 }
 
 // middlewareMetricsInc is a middleware that increments the fileserverHits counter

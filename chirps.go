@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Razimuth/chirpy/internal/auth"
 	"github.com/Razimuth/chirpy/internal/database"
 	"github.com/google/uuid"
 )
@@ -95,15 +96,31 @@ func (cfg *apiConfig) handlerCreateChirp(w http.ResponseWriter, r *http.Request)
 		UserID uuid.UUID `json:"user_id"`
 	}
 
-	decoder := json.NewDecoder(r.Body)
-	params := parameters{}
-	err := decoder.Decode(&params)
+	// Get the token from the Authorization header
+	tokenString, err := auth.GetBearerToken(r.Header)
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Couldn't decode parameters")
+		// Return 401 Unauthorized if header is missing or malformed
+		respondWithError(w, http.StatusUnauthorized, "Unauthorized: missing or invalid token")
 		return
 	}
 
-	// Ported validation logic
+	// Validate the JWT and extract the user ID
+	userID, err := auth.ValidateJWT(tokenString, cfg.jwtSecret)
+	if err != nil {
+		// Return 401 Unauthorized if token is invalid or expired
+		respondWithError(w, http.StatusUnauthorized, "Unauthorized: invalid token")
+		return
+	}
+
+	// Decode the JSON body into the parameters struct
+	decoder := json.NewDecoder(r.Body)
+	params := parameters{}
+	err = decoder.Decode(&params)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Couldn't decode parameters")
+		return
+	}
+
 	const maxChirpLength = 140
 	if len(params.Body) > maxChirpLength {
 		respondWithError(w, http.StatusBadRequest, "Chirp is too long")
@@ -118,7 +135,7 @@ func (cfg *apiConfig) handlerCreateChirp(w http.ResponseWriter, r *http.Request)
 		CreatedAt: time.Now().UTC(),
 		UpdatedAt: time.Now().UTC(),
 		Body:      cleanedText, //params.Body,
-		UserID:    params.UserID,
+		UserID:    userID,      //params.UserID,
 	})
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Couldn't create chirp")
