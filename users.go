@@ -20,9 +20,6 @@ type UserResponse struct {
 	RefreshToken string    `json:"refresh_token"`
 }
 
-//const defaultExpiration = time.Hour
-//const maxExpiration = time.Hour
-
 func (cfg *apiConfig) handlerCreateUser(w http.ResponseWriter, r *http.Request) {
 
 	type parameters struct {
@@ -69,7 +66,6 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 	type parameters struct {
 		Email          string `json:"email"`
 		HashedPassword string `json:"password"`
-		//		ExpiresInSeconds *int64 `json:"expires_in_seconds,omitempty"` // Pointer to int64 to detect if present
 	}
 	decoder := json.NewDecoder(r.Body)
 	params := parameters{}
@@ -90,25 +86,6 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 		respondWithError(w, http.StatusUnauthorized, "Incorrect email or password")
 		return
 	}
-
-	// Calculate expiration time
-	//expiresIn := defaultExpiration
-	//	if params.ExpiresInSeconds != nil {
-	//		// Use provided value if present, capping at maxExpiration
-	//		duration := time.Duration(*params.ExpiresInSeconds) * time.Second
-	//		if duration < maxExpiration {
-	//			expiresIn = duration
-	//		} else {
-	//			expiresIn = maxExpiration
-	//		}
-	//	}
-
-	// Generate the JWT
-	//token, err := auth.MakeJWT(user.ID, cfg.jwtSecret, expiresIn)
-	//if err != nil {
-	//	respondWithError(w, http.StatusInternalServerError, "Couldn't create JWT")
-	//	return
-	//}
 
 	// Generate access token (JWT, 1 hour expiration)
 	accessToken, err := auth.MakeJWT(user.ID, cfg.jwtSecret, time.Hour)
@@ -147,5 +124,53 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 		Email:        user.Email,
 		Token:        accessToken,
 		RefreshToken: refreshToken,
+	})
+}
+
+func (cfg *apiConfig) handlerUpdateUser(w http.ResponseWriter, r *http.Request) {
+	token, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		respondWithError(w, 401, "Unauthorized")
+		return
+	}
+
+	userID, err := auth.ValidateJWT(token, cfg.jwtSecret)
+	if err != nil {
+		respondWithError(w, 401, "Unauthorized")
+		return
+	}
+
+	type parameters struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
+
+	decoder := json.NewDecoder(r.Body)
+	params := parameters{}
+	err = decoder.Decode(&params)
+	if err != nil {
+		respondWithError(w, 500, "Couldn't decode parameters")
+		return
+	}
+
+	hashedPassword, err := auth.HashPassword(params.Password)
+	if err != nil {
+		respondWithError(w, 500, "Couldn't hash password")
+		return
+	}
+
+	user, err := cfg.db.UpdateUser(r.Context(), database.UpdateUserParams{
+		ID:             userID,
+		Email:          params.Email,
+		HashedPassword: hashedPassword,
+	})
+	if err != nil {
+		respondWithError(w, 500, "Couldn't update user")
+		return
+	}
+
+	respondWithJSON(w, 200, UserResponse{
+		ID:    user.ID,
+		Email: user.Email,
 	})
 }
