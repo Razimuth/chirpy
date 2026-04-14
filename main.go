@@ -71,7 +71,7 @@ func main() {
 	mux.HandleFunc("DELETE /api/chirps/{chirpID}", apiCfg.handlerDeleteChirps)
 	mux.HandleFunc("POST /api/refresh", apiCfg.handlerRefresh)
 	mux.HandleFunc("POST /api/revoke", apiCfg.handlerRevoke)
-	// Wrap the file server with http.StripPrefix
+	mux.HandleFunc("POST /api/polka/webhooks", apiCfg.handlerWebhook) // Wrap the file server with http.StripPrefix
 	// http.StripPrefix removes the /app prefix from the request path before passing it to the file server
 	handler := http.StripPrefix("/app", http.FileServer(http.Dir(filepathRoot)))
 	mux.Handle("/app/", apiCfg.middlewareMetricsInc(handler))
