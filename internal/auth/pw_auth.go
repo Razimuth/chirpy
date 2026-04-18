@@ -85,6 +85,20 @@ func MakeRefreshToken() (string, error) {
 	return hex.EncodeToString(bytes), nil
 }
 
+func GetAPIKey(headers http.Header) (string, error) {
+	authHeader := headers.Get("Authorization")
+	if authHeader == "" {
+		return "", fmt.Errorf("no authorization header found")
+	}
+
+	splitAuth := strings.Split(authHeader, " ")
+	if len(splitAuth) < 2 || splitAuth[0] != "ApiKey" {
+		return "", fmt.Errorf("malformed authorization header")
+	}
+
+	return splitAuth[1], nil
+}
+
 /*
 func ValidateJWT(tokenString, tokenSecret string) (uuid.UUID, error) {
 	claims := &jwt.RegisteredClaims{}

@@ -15,6 +15,7 @@ type apiConfig struct {
 	db             *database.Queries
 	platform       string
 	jwtSecret      string
+	polkaKey       string
 }
 
 // middlewareMetricsInc is a middleware that increments the fileserverHits counter

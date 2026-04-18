@@ -34,7 +34,10 @@ func main() {
 	if jwtSecret == "" {
 		log.Fatal("JWT_SECRET must be set")
 	}
-
+	polkaKey := os.Getenv("POLKA_KEY")
+	if polkaKey == "" {
+		log.Fatal("POLKA_KEY must be set")
+	}
 	// Open a database connection using the URL from the environment variable
 	db, err := sql.Open("postgres", dbURL)
 	if err != nil {
@@ -51,6 +54,7 @@ func main() {
 		db:             dbQueries,
 		platform:       platform,
 		jwtSecret:      jwtSecret,
+		polkaKey:       polkaKey,
 	}
 
 	// Create a new http.ServeMux
